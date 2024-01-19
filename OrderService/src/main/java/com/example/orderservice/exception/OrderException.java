@@ -1,12 +1,12 @@
-package com.bookingservice.exception;
+package com.example.orderservice.exception;
 
-public class BookingException extends Exception {
+public class OrderException extends Exception {
 
-    public BookingException(String ex) {
+    public OrderException(String ex) {
         super(ex);
     }
 
-    public BookingException(String ex, Exception e) {
+    public OrderException(String ex, Exception e) {
         super(ex, e);
     }
 }
