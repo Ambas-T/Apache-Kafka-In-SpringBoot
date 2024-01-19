@@ -10,8 +10,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.support.SendResult;
 import org.springframework.stereotype.Service;
-import org.springframework.util.concurrent.ListenableFuture;
-import org.springframework.util.concurrent.ListenableFutureCallback;
+import java.util.concurrent.CompletableFuture;
 
 @Slf4j
 @Service
@@ -28,20 +27,14 @@ public class OrderProducer {
 
             ProducerRecord<String, String> record = new ProducerRecord<>(topic, orderToString);
 
-            ListenableFuture<SendResult<String, String>> future = (ListenableFuture<SendResult<String, String>>) this.kafkaTemplate.send(record);
+            CompletableFuture<SendResult<String, String>> future = this.kafkaTemplate.send(record).completable();
 
-            future.addCallback(new ListenableFutureCallback<SendResult<String, String>>() {
-                @Override
-                public void onSuccess(SendResult<String, String> result) {
-                    log.info("Successfully sent SAP response message to topic {}: {}, offset: {}",
-                            result.getRecordMetadata().topic(), order, result.getRecordMetadata().offset());
-                }
-
-                @Override
-                public void onFailure(Throwable ex) {
-                    log.error("Failed to send SAP response message", ex);
-                }
-            });
+            future.thenApply(SendResult::getRecordMetadata)
+                    .thenAccept(metadata -> log.info("Successfully sent message to topic {}: offset: {}", metadata.topic(), metadata.offset()))
+                    .exceptionally(ex -> {
+                        log.error("Failed to send message", ex);
+                        return null;
+                    });
         } catch (JsonProcessingException e) {
             log.error("JsonProcessingException occur while sending message -> ", e);
             throw new OrderException("JsonProcessingException");
@@ -51,4 +44,3 @@ public class OrderProducer {
         }
     }
 }
-
